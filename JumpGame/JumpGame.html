@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forrest Adventure</title>
+
+    <style> /* To position Game Over message */
+
+        body { /* Background image */
+            background-image: url('forrest.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container { /* The game container */
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border: 3px solid white;
+            position: relative; /* To position Game Over message */
+        }
+
+        canvas { /* Where the game displays */
+            background-image: url('forrest.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid white;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 { /*Forrest Adventure heading*/
+            font-family: Marlett;
+            color: white;
+        }
+
+        button { /*Button Styles*/
+            padding: 10px 20px;
+            margin: 10px;
+            margin-top: 20px;
+            font-size: 16px;
+            font-family: 'Lucida Console';
+            cursor: pointer;
+            background-color: white;
+            color: #BB6BFE;
+            border: none;
+            border-radius: 25px;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover { /*Hover Styles*/
+                background-color: #9562FF;
+                color: white;
+            }
+
+        .score { /*The score heading*/
+            color: white;
+            font-size: 24px;
+            font-family: 'Lucida Console';
+            margin-top: 10px;
+        }
+
+        .game-over { /*The game over style*/
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .game-over h2 { /*Style for the heading*/
+                    font-size: 48px;
+                    font-family: 'Lucida Console';
+                    margin: 0;
+                }
+
+        .game-over button { /*Game over button placement*/
+                    padding: 10px 20px;
+                    margin-top: 20px;
+                    font-size: 20px;
+                }
+
+        .play-button-container { /* Container for the play button*/
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: rgba(0, 0, 0, 0.5);
+                    padding: 20px;
+                    border-radius: 10px;
+                    text-align: center;
+                }
+
+        .play-button-container button { /* Play button position*/
+                    font-size: 24px;
+                    padding: 10px 20px;
+                }
+
+        .exit-button { /* Exit button style*/
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    font-family: 'Lucida Console';
+                    cursor: pointer;
+                    background-color: white;
+                    color: #BB6BFE;
+                    border: none;
+                    border-radius: 25px;
+                    text-align: center;
+                    transition: background-color 0.3s ease;
+                    margin-top: 20px;
+                }
+
+        .exit-button:hover { /* Exit button hover style*/
+                    background-color: #9562FF;
+                    color: white;
+                }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="game-container" > 
+        <div class="play-button-container" id="playButtonContainer">
+            <button onclick="startGame()">Play</button>
+        </div>
+        <h1>Forrest Adventure</h1>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="score" id="score">SCORE: 0</div>
+        <button class="exit-button" onclick="exitGame()">Exit</button>
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <button onclick="restartGame()">Restart</button>
+        </div>
+    </div> 
+
+    <audio id="backgroundMusic" loop>
+        <source src="BackMusic.ogg" type="audio/ogg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <audio id="jumpSound">
+        <source src="Jump.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+
+    <script> // JavaScript Code//
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const dinoImg = new Image();
+        dinoImg.src = 'star.png'; // Character //
+
+        const backgroundMusic = document.getElementById('backgroundMusic'); // Background //
+
+        let dino = { 
+            x: 50,
+            y: 350,
+            width: 50,
+            height: 50,
+            dy: 0,
+            gravity: 0.6,
+            jumpForce: -15,
+            grounded: false
+        };
+
+        let obstacles = [];
+        let gameSpeed = 3;
+        let gameOver = true; // Game starts as not playing//
+        let score = 0;
+
+        function drawDino() {
+            ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+        }
+
+        function drawObstacles() { //Obstacles//
+            for (let obs of obstacles) {
+                ctx.fillStyle = '#5C956A';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            }
+        }
+
+        function update() {
+            if (!gameOver) { //Game Over message//
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                dino.dy += dino.gravity;
+                dino.y += dino.dy;
+
+                if (dino.y + dino.height >= canvas.height) {
+                    dino.y = canvas.height - dino.height;
+                    dino.dy = 0;
+                    dino.grounded = true;
+                } else {
+                    dino.grounded = false;
+                }
+
+                for (let obs of obstacles) {
+                    obs.x -= gameSpeed;
+
+                    if (collision(dino, obs)) {
+                        endGame();
+                        return;
+                    }
+
+                    if (obs.x + obs.width < dino.x && !obs.passed) {
+                        score++;
+                        obs.passed = true;
+                        document.getElementById('score').innerText = `SCORE: ${score}`;
+                    }
+                }
+
+                obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+
+                drawDino();
+                drawObstacles();
+
+                requestAnimationFrame(update);
+            }
+        }
+
+        function collision(rect1, rect2) { //Collisions//
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function jump() { //Jumping//
+            if (dino.grounded) {
+                dino.dy = dino.jumpForce;
+                dino.grounded = false;
+                playJumpSound();
+            }
+        }
+
+        function generateObstacle() { //Obstacles//
+            const height = 20 + Math.random() * 30;
+            const x = canvas.width;
+            const y = canvas.height - height;
+
+            obstacles.push({ x, y, width: 20, height, passed: false });
+        }
+
+        document.addEventListener('keydown', (e) => { //The jump button = Spacebar//
+            if (!gameOver && e.code === 'Space') {
+                jump();
+            }
+        });
+
+        dinoImg.onload = function () {
+            setInterval(generateObstacle, 2000);
+        };
+
+        function endGame() { //End Game message//
+            gameOver = true;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function restartGame() { //Reset of the game//
+            gameOver = false;
+            score = 0;
+            dino = {
+                x: 50,
+                y: 350,
+                width: 50,
+                height: 50,
+                dy: 0,
+                gravity: 0.6,
+                jumpForce: -15,
+                grounded: false
+            };
+            obstacles = [];
+            document.getElementById('score').innerText = `SCORE: ${score}`;
+            document.getElementById('gameOver').style.display = 'none';
+            update();
+        }
+
+        function startGame() {
+            backgroundMusic.play();
+            document.getElementById('playButtonContainer').style.display = 'none';
+            gameOver = false; // Start the game loop//
+            update();
+        }
+
+        function playJumpSound() {
+            const jumpSound = document.getElementById('jumpSound');
+            jumpSound.currentTime = 0; // Reset audio to start//
+            jumpSound.play();
+        }
+
+        function exitGame() {
+            // Stop background music (if it's playing)//
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0; // Reset audio to start//
+
+            // Reset game state//
+            gameOver = true;
+            score = 0;
+            dino = {
+                x: 50,
+                y: 350,
+                width: 50,
+                height: 50,
+                dy: 0,
+                gravity: 0.6,
+                jumpForce: -15,
+                grounded: false
+            };
+            obstacles = [];
+            document.getElementById('score').innerText = `SCORE: ${score}`;
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('playButtonContainer').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
